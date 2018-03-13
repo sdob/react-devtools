@@ -1,4 +1,5 @@
 {
+  "name": "react-devtools",
   "dependencies": {
     "adm-zip": "^0.4.7",
     "babel-core": "6.3.21",
