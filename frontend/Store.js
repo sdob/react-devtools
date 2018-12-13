@@ -20,9 +20,13 @@ var serializePropsForCopy = require('../utils/serializePropsForCopy');
 var invariant = require('./invariant');
 var SearchUtils = require('./SearchUtils');
 var ThemeStore = require('./Themes/Store');
+const {get, set} = require('../utils/storage');
+
+const LOCAL_STORAGE_TRACE_UPDATES_KEY = 'traceUpdates';
 
 import type Bridge from '../agent/Bridge';
-import type {ControlState, DOMEvent, ElementID, Theme} from './types';
+import type {DOMEvent, ElementID, Theme} from './types';
+import type {Snapshot} from '../plugins/Profiler/ProfilerTypes';
 
 type ListenerFunction = () => void;
 type DataType = Map;
@@ -93,8 +97,8 @@ class Store extends EventEmitter {
 
   // Public state
   isInspectEnabled: boolean;
-  traceupdatesState: ?ControlState;
-  colorizerState: ?ControlState;
+  traceUpdates: boolean = false;
+  colorizer: boolean = false;
   contextMenu: ?ContextMenu;
   hovered: ?ElementID;
   isBottomTagHovered: boolean;
@@ -106,8 +110,10 @@ class Store extends EventEmitter {
   searchText: string;
   selectedTab: string;
   selected: ?ElementID;
+  showCopyableInput: ?ElementID;
   themeStore: ThemeStore;
   breadcrumbHead: ?ElementID;
+  snapshotQueue: Array<Snapshot> = [];
   // an object describing the capabilities of the inspected runtime.
   capabilities: {
     scroll?: boolean,
@@ -131,13 +137,12 @@ class Store extends EventEmitter {
     this.hovered = null;
     this.selected = null;
     this.selectedTab = 'Elements';
+    this.showCopyableInput = null;
     this.breadcrumbHead = null;
     this.isBottomTagHovered = false;
     this.isBottomTagSelected = false;
     this.searchText = '';
     this.capabilities = {};
-    this.traceupdatesState = null;
-    this.colorizerState = null;
     this.refreshSearch = false;
     this.themeStore = themeStore;
 
@@ -161,6 +166,7 @@ class Store extends EventEmitter {
     });
     this._bridge.on('mount', (data) => this._mountComponent(data));
     this._bridge.on('update', (data) => this._updateComponent(data));
+    this._bridge.on('updateProfileTimes', (data) => this._updateComponentProfileTimes(data));
     this._bridge.on('unmount', id => this._unmountComponent(id));
     this._bridge.on('setInspectEnabled', (data) => this.setInspectEnabled(data));
     this._bridge.on('select', ({id, quiet, offsetFromLeaf = 0}) => {
@@ -177,6 +183,19 @@ class Store extends EventEmitter {
       this._revealDeep(id);
       this.selectTop(this.skipWrapper(id), quiet);
       this.setSelectedTab('Elements');
+    });
+    this._bridge.on('storeSnapshot', storeSnapshot => {
+      // Store snapshot data for ProfilerStore to process later.
+      // It's important to store it as a queue, because events may be batched.
+      this.snapshotQueue.push({
+        ...storeSnapshot,
+        nodes: this._nodes,
+      });
+      this.emit('storeSnapshot');
+    });
+    this._bridge.on('clearSnapshots', () => {
+      this.snapshotQueue.length = 0;
+      this.emit('clearSnapshots');
     });
 
     this._establishConnection();
@@ -296,7 +315,7 @@ class Store extends EventEmitter {
 
   highlight(id: string): void {
     // Individual highlighting is disabled while colorizer is active
-    if (!this.colorizerState || !this.colorizerState.enabled) {
+    if (!this.colorizer) {
       this._bridge.send('highlight', id);
     }
   }
@@ -306,7 +325,7 @@ class Store extends EventEmitter {
   }
 
   highlightSearch(): void {
-    if (this.colorizerState && this.colorizerState.enabled) {
+    if (this.colorizer) {
       this._bridge.send('hideHighlight');
       if (this.searchRoots) {
         this.highlightMany(this.searchRoots.toArray());
@@ -403,6 +422,11 @@ class Store extends EventEmitter {
     this._toggleDeepChildren(id, value);
   }
 
+  setShowCopyableInput(id: ElementID) {
+    this.showCopyableInput = id;
+    this.emit(id);
+  }
+
   setProps(id: ElementID, path: Array<string>, value: any) {
     this._bridge.send('setProps', {id, path, value});
   }
@@ -437,7 +461,7 @@ class Store extends EventEmitter {
   }
 
   hideHighlight() {
-    if (this.colorizerState && this.colorizerState.enabled) {
+    if (this.colorizer) {
       return;
     }
     this._bridge.send('hideHighlight');
@@ -469,6 +493,7 @@ class Store extends EventEmitter {
 
   select(id: ?ElementID, noHighlight?: boolean, keepBreadcrumb?: boolean) {
     var oldSel = this.selected;
+    this.showCopyableInput = null;
     this.selected = id;
     if (oldSel) {
       this.emit(oldSel);
@@ -548,18 +573,18 @@ class Store extends EventEmitter {
     });
   }
 
-  changeTraceUpdates(state: ControlState) {
-    this.traceupdatesState = state;
+  changeTraceUpdates(enabled: boolean) {
+    this.traceUpdates = enabled;
     this.emit('traceupdatesstatechange');
-    invariant(state.toJS, 'state.toJS should exist');
-    this._bridge.send('traceupdatesstatechange', state.toJS());
+    this._bridge.send('traceupdatesstatechange', enabled);
+    set(LOCAL_STORAGE_TRACE_UPDATES_KEY, enabled);
   }
 
-  changeColorizer(state: ControlState) {
-    this.colorizerState = state;
+  changeColorizer(enabled: boolean) {
+    this.colorizer = enabled;
     this.emit('colorizerchange');
-    this._bridge.send('colorizerchange', state.toJS());
-    if (this.colorizerState && this.colorizerState.enabled) {
+    this._bridge.send('colorizerchange', enabled);
+    if (enabled) {
       this.highlightSearch();
     } else {
       this.hideHighlight();
@@ -572,6 +597,10 @@ class Store extends EventEmitter {
     this._bridge.send('setInspectEnabled', isInspectEnabled);
   }
 
+  setIsRecording(isRecording: boolean) {
+    this._bridge.send('isRecording', isRecording);
+  }
+
   // Private stuff
   _establishConnection() {
     var tries = 0;
@@ -580,6 +609,7 @@ class Store extends EventEmitter {
       clearInterval(requestInt);
       this.capabilities = assign(this.capabilities, capabilities);
       this.emit('connected');
+      this.changeTraceUpdates(get(LOCAL_STORAGE_TRACE_UPDATES_KEY, false));
     });
     this._bridge.send('requestCapabilities');
     requestInt = setInterval(() => {
@@ -643,16 +673,17 @@ class Store extends EventEmitter {
   }
 
   _updateComponent(data: DataType) {
-    var node = this.get(data.id);
+    var id = data.id;
+    var node = this.get(id);
     if (!node) {
       return;
     }
     data.renders = node.get('renders') + 1;
-    this._nodes = this._nodes.mergeIn([data.id], Map(data));
+    this._nodes = this._nodes.mergeIn([id], Map(data));
     if (data.children && data.children.forEach) {
       data.children.forEach(cid => {
-        if (!this._parents.get(cid)) {
-          this._parents = this._parents.set(cid, data.id);
+        if (!this._parents.has(cid)) {
+          this._parents = this._parents.set(cid, id);
           var childNode = this._nodes.get(cid);
           var childID = childNode.get('id');
           if (
@@ -670,6 +701,15 @@ class Store extends EventEmitter {
         }
       });
     }
+    this.emit(data.id);
+  }
+
+  _updateComponentProfileTimes(data: DataType) {
+    var node = this.get(data.id);
+    if (!node) {
+      return;
+    }
+    this._nodes = this._nodes.mergeIn([data.id], Map(data));
     this.emit(data.id);
   }
 

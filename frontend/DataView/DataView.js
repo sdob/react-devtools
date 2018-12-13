@@ -12,13 +12,13 @@
 
 import type {Theme, DOMEvent} from '../types';
 
-var {sansSerif} = require('../Themes/Fonts');
-var React = require('react');
-var Simple = require('./Simple');
-var nullthrows = require('nullthrows').default;
+const PropTypes = require('prop-types');
+const React = require('react');
+const Simple = require('./Simple');
+const nullthrows = require('nullthrows').default;
 
-var consts = require('../../agent/consts');
-var previewComplex = require('./previewComplex');
+const consts = require('../../agent/consts');
+const previewComplex = require('./previewComplex');
 
 type Inspect = (path: Array<string>, cb: () => void) => void;
 type ShowMenu = boolean | (e: DOMEvent, val: any, path: Array<string>, name: string) => void;
@@ -137,7 +137,7 @@ class DataView extends React.Component<DataViewProps> {
 }
 
 DataView.contextTypes = {
-  theme: React.PropTypes.object.isRequired,
+  theme: PropTypes.object.isRequired,
 };
 
 type Props = {
@@ -299,8 +299,8 @@ class DataItem extends React.Component<Props, State> {
 }
 
 DataItem.contextTypes = {
-  onChange: React.PropTypes.func,
-  theme: React.PropTypes.object.isRequired,
+  onChange: PropTypes.func,
+  theme: PropTypes.object.isRequired,
 };
 
 function alphanumericSort(a: string, b: string): number {
@@ -316,12 +316,11 @@ function alphanumericSort(a: string, b: string): number {
 const nameStyle = (isComplex: boolean, theme: Theme) => ({
   cursor: isComplex ? 'pointer' : 'default',
   color: theme.special03,
-  margin: '2px 3px',
+  margin: '0 0.25rem',
 });
 
 const previewStyle = (theme: Theme) => ({
   display: 'flex',
-  margin: '2px 3px',
   whiteSpace: 'pre',
   wordBreak: 'break-word',
   flex: 1,
@@ -329,38 +328,32 @@ const previewStyle = (theme: Theme) => ({
 });
 
 const emptyStyle = (theme: Theme) => ({
-  marginLeft: '0.75rem',
-  padding: '0 5px',
+  lineHeight: '1.25rem',
   color: theme.base04,
-  fontFamily: sansSerif.family,
-  fontSize: sansSerif.sizes.normal,
-  fontStyle: 'italic',
+  paddingLeft: '1rem',
 });
 
 const missingStyle = (theme: Theme) => ({
-  fontSize: sansSerif.sizes.normal,
   fontWeight: 'bold',
-  marginLeft: '0.75rem',
-  padding: '2px 5px',
+  lineHeight: '1.25rem',
   color: theme.base03,
+  paddingLeft: '1rem',
 });
 
 const collapsedArrowStyle = (theme: Theme) => ({
   borderColor: `transparent transparent transparent ${theme.base03}`,
   borderStyle: 'solid',
-  borderWidth: '4px 0 4px 7px',
+  borderWidth: '4px 0 4px 6px',
   display: 'inline-block',
-  marginLeft: 1,
-  verticalAlign: 'top',
+  verticalAlign: 'middle',
 });
 
 const expandedArrowStyle = (theme: Theme) => ({
   borderColor: `${theme.base03} transparent transparent transparent`,
   borderStyle: 'solid',
-  borderWidth: '7px 4px 0 4px',
+  borderWidth: '6px 4px 0 4px',
   display: 'inline-block',
-  marginTop: 1,
-  verticalAlign: 'top',
+  verticalAlign: 'middle',
 });
 
 const sparseArrayHoleStyle = (theme: Theme) => ({
@@ -383,9 +376,7 @@ var styles = {
   opener: {
     cursor: 'pointer',
     marginLeft: -10,
-    paddingRight: 3,
     position: 'absolute',
-    top: 4,
   },
 
   toggler: {
@@ -397,6 +388,7 @@ var styles = {
   head: {
     display: 'flex',
     position: 'relative',
+    lineHeight: '1.25rem',
   },
 
   value: {

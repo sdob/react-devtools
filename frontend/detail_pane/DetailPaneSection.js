@@ -10,9 +10,10 @@
  */
 'use strict';
 
-var React = require('react');
-
 import type {Theme} from '../types';
+
+const PropTypes = require('prop-types');
+const React = require('react');
 
 type Props = {
   title: string,
@@ -39,19 +40,20 @@ class DetailPaneSection extends React.Component<Props> {
 }
 
 DetailPaneSection.contextTypes = {
-  theme: React.PropTypes.object.isRequired,
+  theme: PropTypes.object.isRequired,
 };
 
 const sectionStyle = (theme: Theme) => ({
   borderTop: `1px solid ${theme.base01}`,
-  padding: '0.25rem',
+  padding: '0.5rem',
   flexShrink: 0,
 });
 
 var styles = {
   title: {
     display: 'inline-block',
-    marginRight: '0.25rem',
+    marginRight: '0.5rem',
+    lineHeight: '1.5rem',
   },
 };
 

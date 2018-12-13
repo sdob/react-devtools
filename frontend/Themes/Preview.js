@@ -11,6 +11,7 @@
 'use strict';
 
 const React = require('react');
+const PropTypes = require('prop-types');
 const {Map} = require('immutable');
 
 const consts = require('../../agent/consts');
@@ -40,7 +41,7 @@ class Preview extends React.Component<Props> {
           depth={0}
           node={
             Map({
-              children: ['grandparent'],
+              children: ['strictMode'],
               name: 'div',
             })
           }
@@ -52,8 +53,8 @@ class Preview extends React.Component<Props> {
 }
 
 Preview.childContextTypes = {
-  scrollTo: React.PropTypes.func,
-  store: React.PropTypes.object,
+  scrollTo: PropTypes.func,
+  store: PropTypes.object,
 };
 
 const fauxRef = {
@@ -69,6 +70,13 @@ const childNode = Map({
     style: {color: 'red'},
   },
   ref: fauxRef,
+});
+
+const strictModeNode = Map({
+  id: 'strictMode',
+  children: ['grandparent'],
+  name: 'StrictMode',
+  nodeType: 'Special',
 });
 
 const grandparentNode = Map({
@@ -97,6 +105,7 @@ const nodes = {
   child: childNode,
   grandparent: grandparentNode,
   parent: parentNode,
+  strictMode: strictModeNode,
 };
 
 const noop = () => {};

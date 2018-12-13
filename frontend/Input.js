@@ -10,9 +10,10 @@
  */
 'use strict';
 
-const React = require('react');
-
 import type {Theme} from './types';
+
+const PropTypes = require('prop-types');
+const React = require('react');
 
 type Context = {
   theme: Theme,
@@ -53,7 +54,7 @@ const Input = (props: Props, context: Context) => {
 };
 
 Input.contextTypes = {
-  theme: React.PropTypes.object.isRequired,
+  theme: PropTypes.object.isRequired,
 };
 
 const inputStyle = (theme: Theme) => ({

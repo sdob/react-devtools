@@ -10,10 +10,11 @@
  */
 'use strict';
 
-var React = require('react');
-var ReactDOM = require('react-dom');
-var Draggable = require('./Draggable');
-var nullthrows = require('nullthrows').default;
+const PropTypes = require('prop-types');
+const React = require('react');
+const ReactDOM = require('react-dom');
+const Draggable = require('./Draggable');
+const nullthrows = require('nullthrows').default;
 
 import type {Theme} from './types';
 
@@ -102,7 +103,7 @@ class SplitPane extends React.Component<Props, State> {
 }
 
 SplitPane.contextTypes = {
-  theme: React.PropTypes.object.isRequired,
+  theme: PropTypes.object.isRequired,
 };
 
 const containerStyle = (isVertical: boolean) => ({
@@ -110,6 +111,7 @@ const containerStyle = (isVertical: boolean) => ({
   minWidth: 0,
   flex: 1,
   flexDirection: isVertical ? 'column' : 'row',
+  maxWidth: '100vw',
 });
 
 const draggerInnerStyle = (isVertical: boolean, theme: Theme) => ({
@@ -139,6 +141,7 @@ const styles = {
   rightPane: {
     display: 'flex',
     width: '100%',
+    overflow: 'auto',
   },
   leftPane: {
     display: 'flex',

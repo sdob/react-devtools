@@ -20,15 +20,14 @@ type ConnectOptions = {
 
 var Agent = require('../../../agent/Agent');
 var Bridge = require('../../../agent/Bridge');
+var ProfileCollector = require('../../../plugins/Profiler/ProfileCollector');
 var installGlobalHook = require('../../../backend/installGlobalHook');
-var installRelayHook = require('../../../plugins/Relay/installRelayHook');
 var inject = require('../../../agent/inject');
 var invariant = require('assert');
 var setupRNStyle = require('../../../plugins/ReactNativeStyle/setupBackend');
-var setupRelay = require('../../../plugins/Relay/backend');
+var setupProfiler = require('../../../plugins/Profiler/backend');
 
 installGlobalHook(window);
-installRelayHook(window);
 
 if (window.document) {
   // This shell is universal, and might be used inside a web app.
@@ -121,7 +120,7 @@ function setupBackend(wall, resolveRNStyle) {
     if (agent) {
       agent.emit('shutdown');
     }
-    // This appears necessary for plugin (e.g. Relay) cleanup.
+    // This appears necessary for plugin cleanup.
     window.__REACT_DEVTOOLS_GLOBAL_HOOK__.emit('shutdown');
     bridge = null;
     agent = null;
@@ -139,7 +138,7 @@ function setupBackend(wall, resolveRNStyle) {
     setupRNStyle(bridge, agent, resolveRNStyle);
   }
 
-  setupRelay(bridge, agent, window.__REACT_DEVTOOLS_GLOBAL_HOOK__);
+  setupProfiler(bridge, agent, window.__REACT_DEVTOOLS_GLOBAL_HOOK__);
 
   var _connectTimeout = setTimeout(() => {
     console.warn('react-devtools agent got no connection');
@@ -152,6 +151,8 @@ function setupBackend(wall, resolveRNStyle) {
     inject(window.__REACT_DEVTOOLS_GLOBAL_HOOK__, agent);
     clearTimeout(_connectTimeout);
   });
+
+  ProfileCollector.init(agent);
 }
 
 module.exports = { connectToDevTools };
